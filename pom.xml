@@ -79,6 +79,7 @@
 
     <modules>
         <module>discovery-service</module>
+        <module>common-service</module>
     </modules>
 
 </project>
