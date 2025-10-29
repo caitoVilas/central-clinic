@@ -1,7 +1,7 @@
 server:
   port: 40000
   servlet:
-    context-path: /clinical/api
+    context-path: /api
 spring:
   application:
     name: user-service

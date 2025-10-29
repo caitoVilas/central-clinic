@@ -35,6 +35,9 @@ public class UserApp implements UserDetails {
     private String gender;
     private String dni;
     private String tuition;
+    private String socialWork;
+    private String membershipNumber;
+    private String plan;
     private String imageUrl;
     private boolean accountNonExpired;
     private boolean accountNonLocked;
