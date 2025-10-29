@@ -16,6 +16,6 @@ package com.clinic.commonservice.enums;
 public enum RoleName {
     ROLE_ADMIN,
     ROLE_USER,
-    ROLE_ENABLE_PURCHASE,
-    ROLE_ENABLE_SALE
+    ROLE_DOCTOR,
+    ROLE_TECHNICIAN
 }
