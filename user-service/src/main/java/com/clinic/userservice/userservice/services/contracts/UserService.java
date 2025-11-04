@@ -1,5 +1,6 @@
 package com.clinic.userservice.userservice.services.contracts;
 
+import com.clinic.userservice.userservice.api.models.requests.UserEnabledRequest;
 import com.clinic.userservice.userservice.api.models.requests.UserRequest;
 import com.clinic.userservice.userservice.api.models.responses.UserResponse;
 import org.springframework.data.domain.Page;
@@ -22,4 +23,5 @@ public interface UserService {
     UserResponse getUserByDni(String dni);
     UserResponse updateUser(Long id, UserRequest request);
     void deleteUser(Long id);
+    void enabledUser(UserEnabledRequest request);
 }

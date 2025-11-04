@@ -6,6 +6,7 @@ import com.clinic.commonservice.exceptions.NotFoundException;
 import com.clinic.commonservice.helpers.ValidationHelper;
 import com.clinic.commonservice.logs.WriteLog;
 import com.clinic.commonservice.models.RegisterUser;
+import com.clinic.userservice.userservice.api.models.requests.UserEnabledRequest;
 import com.clinic.userservice.userservice.api.models.requests.UserRequest;
 import com.clinic.userservice.userservice.api.models.responses.UserResponse;
 import com.clinic.userservice.userservice.persistence.entities.Role;
@@ -220,6 +221,53 @@ public class UserServiceImpl implements UserService {
                 }
         );
         userRepository.delete(user);
+    }
+
+    /**
+     * Enables a user account based on the provided UserEnabledRequest.
+     *
+     * @param request the user enabled request containing the token and new password
+     * @throws BadRequestException if validation fails
+     * @throws NotFoundException   if the validation token or user is not found
+     */
+    @Override
+    @Transactional
+    public void enabledUser(UserEnabledRequest request) {
+        log.info(WriteLog.logInfo("--> Enabled user service"));
+        if (request.getPassword() != null && request.getPassword().isEmpty()) {
+            log.error(WriteLog.logError("password must be null or empty"));
+            throw new BadRequestException(List.of("password must be null or empty"));
+        } else if (request.getConfirmPassword() != null && request.getConfirmPassword().isEmpty()) {
+            log.error(WriteLog.logError("confirmPassword must be null or empty"));
+            throw new BadRequestException(List.of("confirmPassword must be null or empty"));
+        } else if (!request.getPassword().equals(request.getConfirmPassword())) {
+            log.error(WriteLog.logError("Passwords do not match"));
+            throw new BadRequestException(List.of("Passwords do not match"));
+        } else if (!ValidationHelper.validatePassword(request.getPassword())) {
+            log.error(WriteLog.logError("Invalid password"));
+            throw new BadRequestException(List.of("Invalid password"));
+        }
+        var vt = validationTokenRepository.findByToken(request.getToken()).orElseThrow(
+                () -> {
+                    log.error(WriteLog.logError("Invalid validation token: " + request.getToken()));
+                    return new NotFoundException("Invalid validation token: " + request.getToken());
+                }
+        );
+        var user = userRepository.findByEmail(vt.getEmail()).orElseThrow(
+                () -> {
+                    log.error(WriteLog.logError("User not found with email: " + vt.getEmail()));
+                    return new NotFoundException("User not found with email: " + vt.getEmail());
+                }
+        );
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setAccountNonExpired(true);
+        user.setAccountNonLocked(true);
+        user.setCredentialsNonExpired(true);
+        user.setEnabled(true);
+        userRepository.save(user);
+        validationTokenRepository.delete(vt);
+        log.info(WriteLog.logInfo("--> User is enabled successfully"));
+
     }
 
     /**
