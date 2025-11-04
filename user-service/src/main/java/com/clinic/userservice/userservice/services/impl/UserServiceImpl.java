@@ -1,13 +1,17 @@
 package com.clinic.userservice.userservice.services.impl;
 
 import com.clinic.commonservice.exceptions.BadRequestException;
+import com.clinic.commonservice.exceptions.BrokerMsgException;
 import com.clinic.commonservice.exceptions.NotFoundException;
 import com.clinic.commonservice.helpers.ValidationHelper;
 import com.clinic.commonservice.logs.WriteLog;
+import com.clinic.commonservice.models.RegisterUser;
+import com.clinic.userservice.userservice.api.models.requests.UserEnabledRequest;
 import com.clinic.userservice.userservice.api.models.requests.UserRequest;
 import com.clinic.userservice.userservice.api.models.responses.UserResponse;
 import com.clinic.userservice.userservice.persistence.entities.Role;
 import com.clinic.userservice.userservice.persistence.entities.UserApp;
+import com.clinic.userservice.userservice.persistence.entities.ValidationToken;
 import com.clinic.userservice.userservice.persistence.repository.RoleRepository;
 import com.clinic.userservice.userservice.persistence.repository.UserRepository;
 import com.clinic.userservice.userservice.persistence.repository.ValidationTokenRepository;
@@ -17,14 +21,19 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Implementation of the UserService interface.
@@ -41,6 +50,7 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final ValidationTokenRepository validationTokenRepository;
     private final PasswordEncoder passwordEncoder;
+    private final KafkaTemplate<String, RegisterUser> userTemplate;
 
     /**
      * Creates a new user based on the provided UserRequest.
@@ -64,8 +74,30 @@ public class UserServiceImpl implements UserService {
         roles.add(userRole);
         user.setRoles(roles);
         userRepository.save(user);
-        //todo enviar email de validacion
+        log.info(WriteLog.logInfo("--> new user created"));
+        log.info(WriteLog.logInfo("--> generate validation token..."));
+        ValidationToken vt = generateValidationToken(request.getEmail());
+        validationTokenRepository.save(vt);
+        log.info(WriteLog.logInfo("--> send message to broker..."));
+        CompletableFuture<SendResult<String, RegisterUser>> future = userTemplate.send(
+                "userTopic",
+                RegisterUser.builder()
+                        .email(request.getEmail())
+                        .username(request.getFullName())
+                        .validationToken(vt.getToken())
+                        .build()
+        );
+        future.whenCompleteAsync((r,t) -> {
+            if (t != null){
+                log.error(WriteLog.logError("Error sending message to broker: " + t.getMessage()));
+                throw new BrokerMsgException("Error sending message to broker: " + t.getMessage());
+            } else {
+                log.info(WriteLog.logInfo("Message sent to broker successfully " ));
+            }
+        });
     }
+
+
 
     /**
      * Retrieves a paginated list of users.
@@ -192,6 +224,53 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
+     * Enables a user account based on the provided UserEnabledRequest.
+     *
+     * @param request the user enabled request containing the token and new password
+     * @throws BadRequestException if validation fails
+     * @throws NotFoundException   if the validation token or user is not found
+     */
+    @Override
+    @Transactional
+    public void enabledUser(UserEnabledRequest request) {
+        log.info(WriteLog.logInfo("--> Enabled user service"));
+        if (request.getPassword() != null && request.getPassword().isEmpty()) {
+            log.error(WriteLog.logError("password must be null or empty"));
+            throw new BadRequestException(List.of("password must be null or empty"));
+        } else if (request.getConfirmPassword() != null && request.getConfirmPassword().isEmpty()) {
+            log.error(WriteLog.logError("confirmPassword must be null or empty"));
+            throw new BadRequestException(List.of("confirmPassword must be null or empty"));
+        } else if (!request.getPassword().equals(request.getConfirmPassword())) {
+            log.error(WriteLog.logError("Passwords do not match"));
+            throw new BadRequestException(List.of("Passwords do not match"));
+        } else if (!ValidationHelper.validatePassword(request.getPassword())) {
+            log.error(WriteLog.logError("Invalid password"));
+            throw new BadRequestException(List.of("Invalid password"));
+        }
+        var vt = validationTokenRepository.findByToken(request.getToken()).orElseThrow(
+                () -> {
+                    log.error(WriteLog.logError("Invalid validation token: " + request.getToken()));
+                    return new NotFoundException("Invalid validation token: " + request.getToken());
+                }
+        );
+        var user = userRepository.findByEmail(vt.getEmail()).orElseThrow(
+                () -> {
+                    log.error(WriteLog.logError("User not found with email: " + vt.getEmail()));
+                    return new NotFoundException("User not found with email: " + vt.getEmail());
+                }
+        );
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setAccountNonExpired(true);
+        user.setAccountNonLocked(true);
+        user.setCredentialsNonExpired(true);
+        user.setEnabled(true);
+        userRepository.save(user);
+        validationTokenRepository.delete(vt);
+        log.info(WriteLog.logInfo("--> User is enabled successfully"));
+
+    }
+
+    /**
      * Validates the user request data.
      *
      * @param request the user request to validate
@@ -226,5 +305,17 @@ public class UserServiceImpl implements UserService {
             log.error(WriteLog.logError("User validation failed: " + String.join(", ", errors)));
             throw new BadRequestException(errors);
         }
+    }
+
+    private ValidationToken generateValidationToken(String email) {
+        final int MIN = 100000;
+        final int MAX = 999999;
+        SecureRandom secureRandom = new SecureRandom();
+        int token = secureRandom.nextInt((MAX - MIN) + 1) + MIN;
+        return ValidationToken.builder()
+                .token(String.valueOf(token))
+                .email(email)
+                .expiryDate(LocalDateTime.now().plusDays(1))
+                .build();
     }
 }

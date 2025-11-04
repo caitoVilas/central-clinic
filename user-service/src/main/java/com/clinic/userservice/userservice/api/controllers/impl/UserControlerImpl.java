@@ -3,6 +3,7 @@ package com.clinic.userservice.userservice.api.controllers.impl;
 import com.clinic.commonservice.exceptions.NotFoundException;
 import com.clinic.commonservice.logs.WriteLog;
 import com.clinic.userservice.userservice.api.controllers.contracts.UserController;
+import com.clinic.userservice.userservice.api.models.requests.UserEnabledRequest;
 import com.clinic.userservice.userservice.api.models.requests.UserRequest;
 import com.clinic.userservice.userservice.api.models.responses.UserResponse;
 import com.clinic.userservice.userservice.services.contracts.UserService;
@@ -76,6 +77,12 @@ public class UserControlerImpl implements UserController {
     public ResponseEntity<?> deleteUser(Long id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    public ResponseEntity<?> enableUser(UserEnabledRequest request) {
+        userService.enabledUser(request);
+        return ResponseEntity.ok().build();
     }
 
 

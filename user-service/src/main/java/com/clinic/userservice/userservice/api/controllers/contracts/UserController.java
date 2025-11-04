@@ -1,5 +1,6 @@
 package com.clinic.userservice.userservice.api.controllers.contracts;
 
+import com.clinic.userservice.userservice.api.models.requests.UserEnabledRequest;
 import com.clinic.userservice.userservice.api.models.requests.UserRequest;
 import com.clinic.userservice.userservice.api.models.responses.UserResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -103,4 +104,18 @@ public interface UserController {
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     public ResponseEntity<?> deleteUser(@PathVariable Long id);
+
+    @PutMapping("/enabled")
+    @SecurityRequirement(name = "security token")
+    @Operation(description = "Enable and set password for an user")
+    @Parameter(name = "request", description = "" +
+            "user enabled request object containing details of the user to be enabled")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "user enabled successfully"),
+            @ApiResponse(responseCode = "400", description = "Bad request, invalid input data"),
+            @ApiResponse(responseCode = "404", description = "Not found"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<?> enableUser(@RequestBody UserEnabledRequest request);
 }
+
