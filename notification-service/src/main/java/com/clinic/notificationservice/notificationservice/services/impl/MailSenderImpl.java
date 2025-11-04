@@ -78,8 +78,10 @@ public class MailSenderImpl implements MailSender{
             helper.setSubject(subject);
             String template = getTemplate(templateName);
             for (Map.Entry<String, String> entry : data.entrySet()) {
-                template = template.replace("{$" + entry.getKey() + "}", entry.getValue());
+                template = template.replace("${" + entry.getKey() + "}", entry.getValue());
             }
+            helper.setText(template, true); // true indicates HTML content
+            mailSender.send(message);
         }catch (MailException e){
             log.error(WriteLog.logError(ERROR_MESSAGE));
             throw new EmailSendingException(ERROR_MESSAGE);

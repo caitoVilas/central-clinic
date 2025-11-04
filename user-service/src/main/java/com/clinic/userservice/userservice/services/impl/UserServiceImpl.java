@@ -1,13 +1,16 @@
 package com.clinic.userservice.userservice.services.impl;
 
 import com.clinic.commonservice.exceptions.BadRequestException;
+import com.clinic.commonservice.exceptions.BrokerMsgException;
 import com.clinic.commonservice.exceptions.NotFoundException;
 import com.clinic.commonservice.helpers.ValidationHelper;
 import com.clinic.commonservice.logs.WriteLog;
+import com.clinic.commonservice.models.RegisterUser;
 import com.clinic.userservice.userservice.api.models.requests.UserRequest;
 import com.clinic.userservice.userservice.api.models.responses.UserResponse;
 import com.clinic.userservice.userservice.persistence.entities.Role;
 import com.clinic.userservice.userservice.persistence.entities.UserApp;
+import com.clinic.userservice.userservice.persistence.entities.ValidationToken;
 import com.clinic.userservice.userservice.persistence.repository.RoleRepository;
 import com.clinic.userservice.userservice.persistence.repository.UserRepository;
 import com.clinic.userservice.userservice.persistence.repository.ValidationTokenRepository;
@@ -17,14 +20,19 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Implementation of the UserService interface.
@@ -41,6 +49,7 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final ValidationTokenRepository validationTokenRepository;
     private final PasswordEncoder passwordEncoder;
+    private final KafkaTemplate<String, RegisterUser> userTemplate;
 
     /**
      * Creates a new user based on the provided UserRequest.
@@ -64,8 +73,30 @@ public class UserServiceImpl implements UserService {
         roles.add(userRole);
         user.setRoles(roles);
         userRepository.save(user);
-        //todo enviar email de validacion
+        log.info(WriteLog.logInfo("--> new user created"));
+        log.info(WriteLog.logInfo("--> generate validation token..."));
+        ValidationToken vt = generateValidationToken(request.getEmail());
+        validationTokenRepository.save(vt);
+        log.info(WriteLog.logInfo("--> send message to broker..."));
+        CompletableFuture<SendResult<String, RegisterUser>> future = userTemplate.send(
+                "userTopic",
+                RegisterUser.builder()
+                        .email(request.getEmail())
+                        .username(request.getFullName())
+                        .validationToken(vt.getToken())
+                        .build()
+        );
+        future.whenCompleteAsync((r,t) -> {
+            if (t != null){
+                log.error(WriteLog.logError("Error sending message to broker: " + t.getMessage()));
+                throw new BrokerMsgException("Error sending message to broker: " + t.getMessage());
+            } else {
+                log.info(WriteLog.logInfo("Message sent to broker successfully " ));
+            }
+        });
     }
+
+
 
     /**
      * Retrieves a paginated list of users.
@@ -226,5 +257,17 @@ public class UserServiceImpl implements UserService {
             log.error(WriteLog.logError("User validation failed: " + String.join(", ", errors)));
             throw new BadRequestException(errors);
         }
+    }
+
+    private ValidationToken generateValidationToken(String email) {
+        final int MIN = 100000;
+        final int MAX = 999999;
+        SecureRandom secureRandom = new SecureRandom();
+        int token = secureRandom.nextInt((MAX - MIN) + 1) + MIN;
+        return ValidationToken.builder()
+                .token(String.valueOf(token))
+                .email(email)
+                .expiryDate(LocalDateTime.now().plusDays(1))
+                .build();
     }
 }
