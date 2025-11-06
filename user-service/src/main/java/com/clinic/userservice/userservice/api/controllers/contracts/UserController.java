@@ -2,6 +2,7 @@ package com.clinic.userservice.userservice.api.controllers.contracts;
 
 import com.clinic.userservice.userservice.api.models.requests.UserEnabledRequest;
 import com.clinic.userservice.userservice.api.models.requests.UserRequest;
+import com.clinic.userservice.userservice.api.models.responses.UserFullDataResponse;
 import com.clinic.userservice.userservice.api.models.responses.UserResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -117,5 +118,16 @@ public interface UserController {
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     public ResponseEntity<?> enableUser(@RequestBody UserEnabledRequest request);
+
+    @GetMapping("/full-data/{email}")
+    @SecurityRequirement(name = "security token")
+    @Operation(description = "Retrieve users by dni")
+    @Parameter(name = "email", description = "email of user")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "users retrieved successfully"),
+            @ApiResponse(responseCode = "404", description = "Not found"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<UserFullDataResponse> getFullUserData(@PathVariable String email);
 }
 

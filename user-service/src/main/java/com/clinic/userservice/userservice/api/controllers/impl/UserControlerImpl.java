@@ -5,6 +5,7 @@ import com.clinic.commonservice.logs.WriteLog;
 import com.clinic.userservice.userservice.api.controllers.contracts.UserController;
 import com.clinic.userservice.userservice.api.models.requests.UserEnabledRequest;
 import com.clinic.userservice.userservice.api.models.requests.UserRequest;
+import com.clinic.userservice.userservice.api.models.responses.UserFullDataResponse;
 import com.clinic.userservice.userservice.api.models.responses.UserResponse;
 import com.clinic.userservice.userservice.services.contracts.UserService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -83,6 +84,11 @@ public class UserControlerImpl implements UserController {
     public ResponseEntity<?> enableUser(UserEnabledRequest request) {
         userService.enabledUser(request);
         return ResponseEntity.ok().build();
+    }
+
+    @Override
+    public ResponseEntity<UserFullDataResponse> getFullUserData(String email) {
+        return ResponseEntity.ok(userService.getUserFulData(email));
     }
 
 

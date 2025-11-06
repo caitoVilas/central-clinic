@@ -82,6 +82,7 @@
         <module>common-service</module>
         <module>user-service</module>
         <module>notification-service</module>
+        <module>auth-service</module>
     </modules>
 
 </project>
