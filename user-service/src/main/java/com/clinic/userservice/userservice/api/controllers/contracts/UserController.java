@@ -25,7 +25,8 @@ import java.util.List;
  *
  */
 public interface UserController {
-    @PostMapping()
+    @PostMapping("/create")
+    @SecurityRequirement(name = "security token")
     @Operation(description = "Add a new user")
     @Parameter(name = "request", description = "user request object containing details of the user to be added")
     @ApiResponses({
@@ -107,7 +108,6 @@ public interface UserController {
     public ResponseEntity<?> deleteUser(@PathVariable Long id);
 
     @PutMapping("/enabled")
-    @SecurityRequirement(name = "security token")
     @Operation(description = "Enable and set password for an user")
     @Parameter(name = "request", description = "" +
             "user enabled request object containing details of the user to be enabled")
@@ -121,7 +121,7 @@ public interface UserController {
 
     @GetMapping("/full-data/{email}")
     @SecurityRequirement(name = "security token")
-    @Operation(description = "Retrieve users by dni")
+    @Operation(hidden = true)
     @Parameter(name = "email", description = "email of user")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "users retrieved successfully"),

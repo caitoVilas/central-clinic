@@ -60,6 +60,11 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * Configures CORS settings for the application.
+     *
+     * @return a CorsConfigurationSource instance
+     */
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration conf = new CorsConfiguration();

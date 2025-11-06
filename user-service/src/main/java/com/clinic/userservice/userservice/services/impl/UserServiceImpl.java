@@ -255,6 +255,10 @@ public class UserServiceImpl implements UserService {
                     return new NotFoundException("Invalid validation token: " + request.getToken());
                 }
         );
+        if (vt.getExpiryDate().isBefore(LocalDateTime.now())) {
+            log.error(WriteLog.logError("Validation token has expired: " + request.getToken()));
+            throw new BadRequestException(List.of("Validation token has expired: " + request.getToken()));
+        }
         var user = userRepository.findByEmail(vt.getEmail()).orElseThrow(
                 () -> {
                     log.error(WriteLog.logError("User not found with email: " + vt.getEmail()));
