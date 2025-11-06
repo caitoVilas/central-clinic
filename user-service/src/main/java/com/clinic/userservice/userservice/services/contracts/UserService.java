@@ -2,6 +2,7 @@ package com.clinic.userservice.userservice.services.contracts;
 
 import com.clinic.userservice.userservice.api.models.requests.UserEnabledRequest;
 import com.clinic.userservice.userservice.api.models.requests.UserRequest;
+import com.clinic.userservice.userservice.api.models.responses.UserFullDataResponse;
 import com.clinic.userservice.userservice.api.models.responses.UserResponse;
 import org.springframework.data.domain.Page;
 
@@ -24,4 +25,5 @@ public interface UserService {
     UserResponse updateUser(Long id, UserRequest request);
     void deleteUser(Long id);
     void enabledUser(UserEnabledRequest request);
+    UserFullDataResponse getUserFulData(String email);
 }

@@ -8,6 +8,7 @@ import com.clinic.commonservice.logs.WriteLog;
 import com.clinic.commonservice.models.RegisterUser;
 import com.clinic.userservice.userservice.api.models.requests.UserEnabledRequest;
 import com.clinic.userservice.userservice.api.models.requests.UserRequest;
+import com.clinic.userservice.userservice.api.models.responses.UserFullDataResponse;
 import com.clinic.userservice.userservice.api.models.responses.UserResponse;
 import com.clinic.userservice.userservice.persistence.entities.Role;
 import com.clinic.userservice.userservice.persistence.entities.UserApp;
@@ -16,6 +17,7 @@ import com.clinic.userservice.userservice.persistence.repository.RoleRepository;
 import com.clinic.userservice.userservice.persistence.repository.UserRepository;
 import com.clinic.userservice.userservice.persistence.repository.ValidationTokenRepository;
 import com.clinic.userservice.userservice.services.contracts.UserService;
+import com.clinic.userservice.userservice.utils.mappers.FullUserMapper;
 import com.clinic.userservice.userservice.utils.mappers.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -268,6 +270,18 @@ public class UserServiceImpl implements UserService {
         validationTokenRepository.delete(vt);
         log.info(WriteLog.logInfo("--> User is enabled successfully"));
 
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserFullDataResponse getUserFulData(String email) {
+            log.info(WriteLog.logInfo("--> Getting user by email service"));
+            return FullUserMapper.mapToDto(userRepository.findByEmail(email).orElseThrow(
+                    () -> {
+                        log.error(WriteLog.logError("User not found with email: " + email));
+                        return new NotFoundException("User not found with email: " + email);
+                    }
+            ));
     }
 
     /**
