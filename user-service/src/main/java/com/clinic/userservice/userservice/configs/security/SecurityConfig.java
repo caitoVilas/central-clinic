@@ -51,7 +51,8 @@ public class SecurityConfig {
                                         "/v3/api-docs/**",
                                         "/v1/clinical/users/enabled",
                                         "/v1/clinical/users/full-data/**",
-                                        "/v1/clinical/users/create").permitAll()
+                                        "/v1/clinical/users/create",
+                                       "/v1/clinical/users/activation-request/**").permitAll()
                                .anyRequest().authenticated())
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())

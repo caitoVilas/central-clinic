@@ -14,4 +14,5 @@ import java.util.Optional;
  */
 public interface ValidationTokenRepository extends JpaRepository<ValidationToken, Long> {
     Optional<ValidationToken> findByToken(String token);
+    void deleteAllByEmail(String email);
 }

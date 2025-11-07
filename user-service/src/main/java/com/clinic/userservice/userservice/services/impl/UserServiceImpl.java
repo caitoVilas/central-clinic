@@ -77,26 +77,7 @@ public class UserServiceImpl implements UserService {
         user.setRoles(roles);
         userRepository.save(user);
         log.info(WriteLog.logInfo("--> new user created"));
-        log.info(WriteLog.logInfo("--> generate validation token..."));
-        ValidationToken vt = generateValidationToken(request.getEmail());
-        validationTokenRepository.save(vt);
-        log.info(WriteLog.logInfo("--> send message to broker..."));
-        CompletableFuture<SendResult<String, RegisterUser>> future = userTemplate.send(
-                "userTopic",
-                RegisterUser.builder()
-                        .email(request.getEmail())
-                        .username(request.getFullName())
-                        .validationToken(vt.getToken())
-                        .build()
-        );
-        future.whenCompleteAsync((r,t) -> {
-            if (t != null){
-                log.error(WriteLog.logError("Error sending message to broker: " + t.getMessage()));
-                throw new BrokerMsgException("Error sending message to broker: " + t.getMessage());
-            } else {
-                log.info(WriteLog.logInfo("Message sent to broker successfully " ));
-            }
-        });
+        this.sendNotification(user);
     }
 
 
@@ -289,6 +270,28 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
+     * Handles the activation request for a user by generating a new validation token
+     * and sending a notification.
+     *
+     * @param email the email of the user requesting activation
+     * @throws NotFoundException if the user is not found
+     */
+    @Override
+    @Transactional
+    public void activationRequest(String email) {
+        log.info(WriteLog.logInfo("--> Activating user service"));
+        var user = userRepository.findByEmail(email).orElseThrow(
+                () -> {
+                    log.error(WriteLog.logError("User not found with email: " + email));
+                    return new NotFoundException("User not found with email: " + email);
+                }
+        );
+        validationTokenRepository.deleteAllByEmail(email);
+        this.sendNotification(user);
+
+    }
+
+    /**
      * Validates the user request data.
      *
      * @param request the user request to validate
@@ -325,6 +328,12 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    /**
+     * Generates a validation token for the given email.
+     *
+     * @param email the email for which the token is generated
+     * @return the generated ValidationToken
+     */
     private ValidationToken generateValidationToken(String email) {
         final int MIN = 100000;
         final int MAX = 999999;
@@ -335,5 +344,34 @@ public class UserServiceImpl implements UserService {
                 .email(email)
                 .expiryDate(LocalDateTime.now().plusDays(1))
                 .build();
+    }
+
+    /**
+     * Sends a notification message to the broker with the validation token.
+     *
+     * @param user the user for whom the notification is to be sent
+     * @throws BrokerMsgException if there is an error sending the message
+     */
+    private void sendNotification(UserApp user){
+        log.info(WriteLog.logInfo("--> generate validation token..."));
+        ValidationToken vt = generateValidationToken(user.getEmail());
+        validationTokenRepository.save(vt);
+        log.info(WriteLog.logInfo("--> send message to broker..."));
+        CompletableFuture<SendResult<String, RegisterUser>> future = userTemplate.send(
+                "userTopic",
+                RegisterUser.builder()
+                        .email(user.getEmail())
+                        .username(user.getFullName())
+                        .validationToken(vt.getToken())
+                        .build()
+        );
+        future.whenCompleteAsync((r,t) -> {
+            if (t != null){
+                log.error(WriteLog.logError("Error sending message to broker: " + t.getMessage()));
+                throw new BrokerMsgException("Error sending message to broker: " + t.getMessage());
+            } else {
+                log.info(WriteLog.logInfo("Message sent to broker successfully " ));
+            }
+        });
     }
 }
