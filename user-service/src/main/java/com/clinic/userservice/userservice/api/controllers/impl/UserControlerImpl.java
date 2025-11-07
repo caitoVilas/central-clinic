@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.web.config.EnableSpringDataWebSupport;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,6 +33,7 @@ import java.util.List;
 @RequestMapping("v1/clinical/users")
 @RequiredArgsConstructor
 @Tag(name = "User Controller", description = "Endpoints for managing users")
+@EnableSpringDataWebSupport(pageSerializationMode = EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO)
 public class UserControlerImpl implements UserController {
     private final UserService userService;
 
@@ -89,6 +91,12 @@ public class UserControlerImpl implements UserController {
     @Override
     public ResponseEntity<UserFullDataResponse> getFullUserData(String email) {
         return ResponseEntity.ok(userService.getUserFulData(email));
+    }
+
+    @Override
+    public ResponseEntity<UserFullDataResponse> activationRequest(String email) {
+        userService.activationRequest(email);
+        return ResponseEntity.ok().build();
     }
 
 

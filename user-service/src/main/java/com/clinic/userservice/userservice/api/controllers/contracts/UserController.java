@@ -129,5 +129,15 @@ public interface UserController {
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     public ResponseEntity<UserFullDataResponse> getFullUserData(@PathVariable String email);
+
+    @GetMapping("/activation-request/{email}")
+    @Operation(description = "Request account activation for an user")
+    @Parameter(name = "email", description = "email of user")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "users retrieved successfully"),
+            @ApiResponse(responseCode = "404", description = "Not found"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<UserFullDataResponse> activationRequest(@PathVariable String email);
 }
 

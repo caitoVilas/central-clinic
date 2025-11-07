@@ -26,4 +26,5 @@ public interface UserService {
     void deleteUser(Long id);
     void enabledUser(UserEnabledRequest request);
     UserFullDataResponse getUserFulData(String email);
+    void activationRequest(String email);
 }
